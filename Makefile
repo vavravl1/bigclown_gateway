@@ -1,5 +1,8 @@
 
-all: clean build deploy
+all: clean deps build deploy
+
+deps:
+	dep ensure
 
 build: clean
 	env GOOS=linux GOARCH=arm GOARM=5 go build -o ${GOPATH}/bin/bigclown_gateway github.com/vavravl1/bigclown_gateway/

@@ -4,6 +4,7 @@ Go implementation of Bigclown CoreModule->raspberry gateway
 ## Required tools
 * make
 * go (go version go1.10.2)
+* dep (v0.4.1)
 * docker
 
 ## How to build
