@@ -4,6 +4,7 @@ import (
 	"github.com/tarm/serial"
 	"log"
 	"encoding/json"
+	"os"
 )
 
 type SerialReaderWriter struct {
@@ -11,7 +12,7 @@ type SerialReaderWriter struct {
 }
 
 func InitSerial() SerialReaderWriter {
-	c := &serial.Config{Name: BC_GATEWAY_DEVICE_NAME, Baud: BC_GATEWAY_DEVICE_BAUD_RATE}
+	c := &serial.Config{Name: os.Getenv("BC_DEVICE"), Baud: BC_GATEWAY_DEVICE_BAUD_RATE}
 	port, openSerialErr := serial.OpenPort(c)
 	if openSerialErr != nil {
 		log.Fatal(openSerialErr)
