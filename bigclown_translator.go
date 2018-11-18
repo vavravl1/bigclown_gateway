@@ -32,17 +32,26 @@ func (t *BigClownTranslator) UpdateByMessage(bcMsg BcMessage) {
 }
 
 func (t *BigClownTranslator) FromMqttToSerial(input BcMessage) BcMessage {
+	topicForSerial := strings.Replace(input.topic, "node/", "", 1)
+	for k,v := range t.nodeIdToName {
+		topicForSerial = strings.Replace(topicForSerial, v, k, 1)
+	}
 	return BcMessage{
-		strings.Replace(input.topic, "node/", "", 1),
+		topicForSerial,
 		input.value,
 	}
 }
 
-func (t *BigClownTranslator) FromSerial(input BcMessage) BcMessage {
+func (t *BigClownTranslator) FromSerialToMqtt(input BcMessage) BcMessage {
+	topicToMqtt := input.topic
+	for k,v := range t.nodeIdToName {
+		topicToMqtt = strings.Replace(topicToMqtt, k, v, 1)
+	}
+
 	if strings.HasPrefix(input.topic, "$") || strings.HasPrefix(input.topic, "/") {
-		return input
+		return BcMessage{topicToMqtt, input.value}
 	} else {
-		return BcMessage{"node/" + input.topic, input.value}
+		return BcMessage{"node/" + topicToMqtt, input.value}
 	}
 }
 

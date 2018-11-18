@@ -40,7 +40,7 @@ func (readerWriter *SerialReaderWriter) ConsumeMessagesFromSerial(callback func(
 				log.Print("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
 			} else {
 				readerWriter.bcTranslator.UpdateByMessage(bcMsg)
-				callback(readerWriter.bcTranslator.FromSerial(bcMsg))
+				callback(readerWriter.bcTranslator.FromSerialToMqtt(bcMsg))
 			}
 		}
 	}
