@@ -7,7 +7,7 @@ import (
 
 type BcMessage struct {
 	// Always without the MQTT_TOPIC_PREFIX (="node/") prefix
-	topic  string
+	topic string
 	value interface{}
 }
 
@@ -28,12 +28,11 @@ func (message BcMessage) String() string {
 }
 
 func (message BcMessage) toBigClownMessage() string {
-	jsn,_ := json.Marshal(message.value)
-        return "[\"" + message.topic + "\"," + string(jsn) + "]\n"
+	jsn, _ := json.Marshal(message.value)
+	return "[\"" + message.topic + "\"," + string(jsn) + "]\n"
 }
 
 func (message BcMessage) Bytes() []byte {
-	jsn,_ := json.Marshal(message.value)
+	jsn, _ := json.Marshal(message.value)
 	return jsn
 }
-

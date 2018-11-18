@@ -45,6 +45,15 @@ func (connector *MqttConnector) Publish(bcMsg BcMessage) {
 	)
 }
 
+func (connector *MqttConnector) RequestAliases() {
+	for i := 0; i < 4; i++ {
+		connector.Publish(BcMessage{
+			"$eeprom/alias/list",
+			i,
+		})
+	}
+}
+
 func (connector *MqttConnector) addListener(_topics []string) {
 	topics := make(map[string]byte)
 	for _, pref := range _topics {

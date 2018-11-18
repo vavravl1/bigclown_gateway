@@ -1,13 +1,17 @@
 package main
 
-import "log"
+import (
+	"log"
+	"math"
+	"time"
+)
 
 func main() {
 	mqttConnector := InitMqtt()
-	serial := InitSerial(mqttConnector.CreateBigClownTranslator())
+	serial := InitSerial()
 
 	topics := []string{
-		"$eeprom/#",
+		"$eeprom/#", // Needs to be here BigClownTranslator in SerialReaderWriter
 		"node/+/+/+/+/set",
 		"node/+/+/+/+/get",
 		"/nodes/+",
@@ -24,4 +28,8 @@ func main() {
 		log.Print("Received msg from serial " + bcMsg.String())
 		mqttConnector.Publish(bcMsg)
 	})
+
+	<-time.After(time.Duration(1000))
+	mqttConnector.RequestAliases()
+	<-time.After(time.Duration(math.MaxInt64))
 }

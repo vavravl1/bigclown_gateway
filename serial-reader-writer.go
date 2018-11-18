@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/tarm/serial"
+	"go/types"
 	"log"
 	"encoding/json"
 	"os"
@@ -12,13 +13,13 @@ type SerialReaderWriter struct {
 	bcTranslator BigClownTranslator
 }
 
-func InitSerial(bcTranslator BigClownTranslator) SerialReaderWriter {
+func InitSerial() SerialReaderWriter {
 	c := &serial.Config{Name: os.Getenv("BC_DEVICE"), Baud: BC_GATEWAY_DEVICE_BAUD_RATE}
 	port, openSerialErr := serial.OpenPort(c)
 	if openSerialErr != nil {
 		log.Fatal(openSerialErr)
 	}
-	return SerialReaderWriter{port, bcTranslator}
+	return SerialReaderWriter{port, InitBigClownTranslator()}
 }
 
 func (readerWriter *SerialReaderWriter) WriteSingleMessage(message BcMessage) {
@@ -31,15 +32,19 @@ func (readerWriter *SerialReaderWriter) WriteSingleMessage(message BcMessage) {
 }
 
 func (readerWriter *SerialReaderWriter) ConsumeMessagesFromSerial(callback func(message BcMessage)) {
-	for ;; {
-		line := readerWriter.readLine()
-		var bcMsg BcMessage
-		if parseBcMessageError := json.Unmarshal(line, &bcMsg); parseBcMessageError != nil {
-			log.Print("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
-		} else {
-			callback(readerWriter.bcTranslator.FromSerial(bcMsg))
+	doThis := func() types.Nil {
+		for ; ; {
+			line := readerWriter.readLine()
+			var bcMsg BcMessage
+			if parseBcMessageError := json.Unmarshal(line, &bcMsg); parseBcMessageError != nil {
+				log.Print("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
+			} else {
+				readerWriter.bcTranslator.UpdateByMessage(bcMsg)
+				callback(readerWriter.bcTranslator.FromSerial(bcMsg))
+			}
 		}
 	}
+	go doThis()
 }
 
 func (readerWriter *SerialReaderWriter) readLine() []byte {
