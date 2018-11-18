@@ -9,17 +9,13 @@ import (
 	"encoding/json"
 )
 
-type mqttListener struct {
-	topicMatcher string
-	callback     func(message BcMessage)
-}
-
 type MqttConnector struct {
 	client   mqtt.Client
-	handlers []mqttListener
+	topicPrefix string
+	callback func(message BcMessage)
 }
 
-func InitMqtt() MqttConnector {
+func InitMqtt(topics []string, topicPrefix string, onMessage func(message BcMessage)) MqttConnector {
 	opts := mqtt.NewClientOptions().
 		AddBroker(os.Getenv("MQTT_BROKER_URL")).
 		SetUsername(os.Getenv("MQTT_BROKER_USERNAME")).
@@ -31,18 +27,11 @@ func InitMqtt() MqttConnector {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
-	return MqttConnector{client, make([]mqttListener, 0)}
-}
 
-func (connector *MqttConnector) AddListener(topicSuffix string, onMessage func(message BcMessage)) {
-	connector.handlers = append(connector.handlers, mqttListener{topicSuffix, onMessage})
-	topics := map[string]byte{
-	    "#": 0,
-	    "$eeprom/#": 0,
-	}
-	if token := connector.client.SubscribeMultiple(topics, connector.mqttCallback); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
+	result := MqttConnector{client, topicPrefix, onMessage}
+        result.addListener(topics);
+
+	return result
 }
 
 func (connector *MqttConnector) Publish(bcMsg BcMessage) {
@@ -50,7 +39,7 @@ func (connector *MqttConnector) Publish(bcMsg BcMessage) {
 	if strings.HasPrefix(bcMsg.topic, "$") {
 	    topic = bcMsg.topic
 	} else {
-	    topic = MQTT_TOPIC_PREFIX + bcMsg.topic
+	    topic = connector.topicPrefix + bcMsg.topic
 	}
 	connector.client.Publish(
 		topic,
@@ -60,26 +49,31 @@ func (connector *MqttConnector) Publish(bcMsg BcMessage) {
 	)
 }
 
-func (connector *MqttConnector) mqttCallback(client mqtt.Client, msg mqtt.Message) {
-	for _, handler := range connector.handlers {
-		if strings.HasSuffix(msg.Topic(), handler.topicMatcher) {
-			log.Print("Client received message " + string(msg.Payload()) + " from " + msg.Topic())
-			if msg, err := createBcMessageWithRemovedNodePrefix(msg.Topic(), msg.Payload()); err == nil {
-				handler.callback(msg)
-			} else {
-				log.Print("Unable to read message from mqtt: " + err.Error())
-			}
-		}
+func (connector *MqttConnector) addListener(_topics []string) {
+	topics := make(map[string]byte)
+	for _, pref := range _topics {
+	    topics[pref] = 0
+	}
+	if token := connector.client.SubscribeMultiple(topics, connector.mqttCallback); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	}
 }
 
-func createBcMessageWithRemovedNodePrefix(topic string, value []byte) (BcMessage, error) {
+func (connector *MqttConnector) mqttCallback(client mqtt.Client, msg mqtt.Message) {
+	if msg, err := connector.createBcMessageWithRemovedNodePrefix(msg.Topic(), msg.Payload()); err == nil {
+		connector.callback(msg);
+	} else {
+		log.Print("Unable to read message from mqtt: " + err.Error())
+	}
+}
+
+func (connector *MqttConnector)createBcMessageWithRemovedNodePrefix(topic string, value []byte) (BcMessage, error) {
 	var tmp interface{}
 	if err := json.Unmarshal(value, &tmp); err != nil {
 		return BcMessage{}, err
 	}
 	return BcMessage{
-		strings.Replace(topic, MQTT_TOPIC_PREFIX, "", 1),
+		strings.Replace(topic, connector.topicPrefix, "", 1),
 		tmp,
 	}, nil
 }

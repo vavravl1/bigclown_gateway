@@ -4,26 +4,20 @@ import "log"
 
 func main() {
 	serial := InitSerial()
-	mqttConnector := InitMqtt()
 
-	suffixes := []string{
-		"/set",
-		"/nodes/get",
-		"/info/get",
-		"start",
-		"stop",
-		"$eeprom/alias/add",
-		"$eeprom/alias/remove",
-		"$eeprom/alias/list",
+	topics := []string{
+		"$eeprom/#",
+		"node/+/+/+/+/set",
+		"node/+/+/+/+/get",
+		"/nodes/#",
+		"/pairing-mode/#",
+		"/info/#",
 	}
+	mqttConnector := InitMqtt(topics, "node/" , func(msg BcMessage) {
+		log.Print("Sending msg to serial" + msg.String())
+		serial.WriteSingleMessage(msg)
+	})
 
-	for _,s := range suffixes {
-		mqttConnector.AddListener(s, func(msg BcMessage) {
-		        log.Print("Sending msg to serial" + msg.String())
-			serial.WriteSingleMessage(msg)
-		})
-
-	}
 
 	serial.ConsumeMessagesFromSerial(func(bcMsg BcMessage) {
 		log.Print("Received msg from serial " + bcMsg.String())
