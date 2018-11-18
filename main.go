@@ -9,9 +9,12 @@ func main() {
 		"$eeprom/#",
 		"node/+/+/+/+/set",
 		"node/+/+/+/+/get",
-		"/nodes/#",
+		"/nodes/get",
+		"/nodes/+",
+		"/nodes/get",
+		"/nodes/get",
 		"/pairing-mode/#",
-		"/info/#",
+		"/info/get",
 	}
 	mqttConnector := InitMqtt(topics, "node/" , func(msg BcMessage) {
 		log.Print("Sending msg to serial" + msg.String())

@@ -36,7 +36,7 @@ func InitMqtt(topics []string, topicPrefix string, onMessage func(message BcMess
 
 func (connector *MqttConnector) Publish(bcMsg BcMessage) {
         var topic string
-	if strings.HasPrefix(bcMsg.topic, "$") {
+	if strings.HasPrefix(bcMsg.topic, "$") || strings.HasPrefix(bcMsg.topic, "/") {
 	    topic = bcMsg.topic
 	} else {
 	    topic = connector.topicPrefix + bcMsg.topic
