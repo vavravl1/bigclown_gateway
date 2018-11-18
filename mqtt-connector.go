@@ -1,21 +1,19 @@
 package main
 
 import (
-	"time"
-	"log"
-	"strings"
-	"os"
-	"github.com/eclipse/paho.mqtt.golang"
 	"encoding/json"
+	"github.com/eclipse/paho.mqtt.golang"
+	"log"
+	"os"
+	"time"
 )
 
 type MqttConnector struct {
 	client   mqtt.Client
-	topicPrefix string
 	callback func(message BcMessage)
 }
 
-func InitMqtt(topics []string, topicPrefix string, onMessage func(message BcMessage)) MqttConnector {
+func InitMqtt() MqttConnector {
 	opts := mqtt.NewClientOptions().
 		AddBroker(os.Getenv("MQTT_BROKER_URL")).
 		SetUsername(os.Getenv("MQTT_BROKER_USERNAME")).
@@ -28,21 +26,19 @@ func InitMqtt(topics []string, topicPrefix string, onMessage func(message BcMess
 		panic(token.Error())
 	}
 
-	result := MqttConnector{client, topicPrefix, onMessage}
-        result.addListener(topics);
+	result := MqttConnector{client, nil}
 
 	return result
 }
 
+func (connector *MqttConnector) ConsumeMessagesFromMqtt(topics []string, onMessage func(message BcMessage)) {
+	connector.callback = onMessage
+	connector.addListener(topics)
+}
+
 func (connector *MqttConnector) Publish(bcMsg BcMessage) {
-        var topic string
-	if strings.HasPrefix(bcMsg.topic, "$") || strings.HasPrefix(bcMsg.topic, "/") {
-	    topic = bcMsg.topic
-	} else {
-	    topic = connector.topicPrefix + bcMsg.topic
-	}
 	connector.client.Publish(
-		topic,
+		bcMsg.topic,
 		0,
 		false,
 		bcMsg.Bytes(),
@@ -60,20 +56,15 @@ func (connector *MqttConnector) addListener(_topics []string) {
 }
 
 func (connector *MqttConnector) mqttCallback(client mqtt.Client, msg mqtt.Message) {
-	if msg, err := connector.createBcMessageWithRemovedNodePrefix(msg.Topic(), msg.Payload()); err == nil {
-		connector.callback(msg);
-	} else {
+	var tmp interface{}
+	if err := json.Unmarshal(msg.Payload(), &tmp); err != nil {
 		log.Print("Unable to read message from mqtt: " + err.Error())
 	}
+
+	bcMsg := BcMessage{msg.Topic(), tmp}
+	connector.callback(bcMsg);
 }
 
-func (connector *MqttConnector)createBcMessageWithRemovedNodePrefix(topic string, value []byte) (BcMessage, error) {
-	var tmp interface{}
-	if err := json.Unmarshal(value, &tmp); err != nil {
-		return BcMessage{}, err
-	}
-	return BcMessage{
-		strings.Replace(topic, connector.topicPrefix, "", 1),
-		tmp,
-	}, nil
+func (connector *MqttConnector) CreateBigClownTranslator() BigClownTranslator {
+	return BigClownTranslator{}
 }

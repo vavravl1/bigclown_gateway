@@ -3,7 +3,8 @@ package main
 import "log"
 
 func main() {
-	serial := InitSerial()
+	mqttConnector := InitMqtt()
+	serial := InitSerial(mqttConnector.CreateBigClownTranslator())
 
 	topics := []string{
 		"$eeprom/#",
@@ -13,11 +14,11 @@ func main() {
 		"/pairing-mode/#",
 		"/info/get",
 	}
-	mqttConnector := InitMqtt(topics, "node/" , func(msg BcMessage) {
+
+	mqttConnector.ConsumeMessagesFromMqtt(topics, func(msg BcMessage) {
 		log.Print("Sending msg to serial" + msg.String())
 		serial.WriteSingleMessage(msg)
 	})
-
 
 	serial.ConsumeMessagesFromSerial(func(bcMsg BcMessage) {
 		log.Print("Received msg from serial " + bcMsg.String())

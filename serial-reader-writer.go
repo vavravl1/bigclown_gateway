@@ -9,19 +9,21 @@ import (
 
 type SerialReaderWriter struct {
 	port *serial.Port
+	bcTranslator BigClownTranslator
 }
 
-func InitSerial() SerialReaderWriter {
+func InitSerial(bcTranslator BigClownTranslator) SerialReaderWriter {
 	c := &serial.Config{Name: os.Getenv("BC_DEVICE"), Baud: BC_GATEWAY_DEVICE_BAUD_RATE}
 	port, openSerialErr := serial.OpenPort(c)
 	if openSerialErr != nil {
 		log.Fatal(openSerialErr)
 	}
-	return SerialReaderWriter{port}
+	return SerialReaderWriter{port, bcTranslator}
 }
 
 func (readerWriter *SerialReaderWriter) WriteSingleMessage(message BcMessage) {
-	_, serialWriteErr := readerWriter.port.Write([]byte(message.toBigClownMessage()))
+	toSerial := readerWriter.bcTranslator.FromMqttToSerial(message)
+	_, serialWriteErr := readerWriter.port.Write([]byte(toSerial.toBigClownMessage()))
 	if serialWriteErr != nil {
 		log.Fatal(serialWriteErr)
 	}
@@ -35,7 +37,7 @@ func (readerWriter *SerialReaderWriter) ConsumeMessagesFromSerial(callback func(
 		if parseBcMessageError := json.Unmarshal(line, &bcMsg); parseBcMessageError != nil {
 			log.Print("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
 		} else {
-			callback(bcMsg)
+			callback(readerWriter.bcTranslator.FromSerial(bcMsg))
 		}
 	}
 }
