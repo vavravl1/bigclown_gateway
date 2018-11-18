@@ -9,10 +9,7 @@ func main() {
 		"$eeprom/#",
 		"node/+/+/+/+/set",
 		"node/+/+/+/+/get",
-		"/nodes/get",
 		"/nodes/+",
-		"/nodes/get",
-		"/nodes/get",
 		"/pairing-mode/#",
 		"/info/get",
 	}
