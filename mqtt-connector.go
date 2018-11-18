@@ -36,14 +36,24 @@ func InitMqtt() MqttConnector {
 
 func (connector *MqttConnector) AddListener(topicSuffix string, onMessage func(message BcMessage)) {
 	connector.handlers = append(connector.handlers, mqttListener{topicSuffix, onMessage})
-	if token := connector.client.Subscribe("#", 0, connector.mqttCallback); token.Wait() && token.Error() != nil {
+	topics := map[string]byte{
+	    "#": 0,
+	    "$eeprom/#": 0,
+	}
+	if token := connector.client.SubscribeMultiple(topics, connector.mqttCallback); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
 }
 
 func (connector *MqttConnector) Publish(bcMsg BcMessage) {
+        var topic string
+	if strings.HasPrefix(bcMsg.topic, "$") {
+	    topic = bcMsg.topic
+	} else {
+	    topic = MQTT_TOPIC_PREFIX + bcMsg.topic
+	}
 	connector.client.Publish(
-		MQTT_TOPIC_PREFIX + bcMsg.topic,
+		topic,
 		0,
 		false,
 		bcMsg.Bytes(),

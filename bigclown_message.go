@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 )
 
 type BcMessage struct {
@@ -29,32 +28,12 @@ func (message BcMessage) String() string {
 }
 
 func (message BcMessage) toBigClownMessage() string {
-	switch v := message.value.(type) {
-	case float64:
-		return "[\"" + message.topic + "\"," + strconv.FormatFloat(v, 'f', 2, 64) + "]\n"
-	case bool:
-		return "[\"" + message.topic + "\"," + strconv.FormatBool(v)  + "]\n"
-	case string:
-		return "[\"" + message.topic + "\",\"" + v  + "\"]\n"
-	default:
-		//return "[\"" + message.topic + "\",\"unknown{" + reflect.TypeOf(message.value).String() + "}\"]\n"
-		return "[\"" + message.topic + "\",\"unknown\"]\n"
-	}
+	jsn,_ := json.Marshal(message.value)
+        return "[\"" + message.topic + "\"," + string(jsn) + "]\n"
 }
 
 func (message BcMessage) Bytes() []byte {
-	switch v := message.value.(type) {
-	case float64:
-		return []byte(strconv.FormatFloat(v, 'f', 2, 64))
-	case bool:
-		if v {
-			return []byte("true")
-		} else {
-			return []byte("false")
-		}
-	case string:
-		return []byte("\"" + v + "\"")
-	default:
-        return []byte("unknown")
-	}
+	jsn,_ := json.Marshal(message.value)
+	return jsn
 }
+
