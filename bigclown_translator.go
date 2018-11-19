@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"strings"
 )
@@ -11,7 +13,13 @@ type BigClownTranslator struct {
 }
 
 func InitBigClownTranslator() BigClownTranslator {
-	return BigClownTranslator{make(map[string]string)}
+	aliases := make(map[string]string)
+	if data, err := ioutil.ReadFile("./stored-aliases.json"); err != nil {
+		panic(err)
+	} else {
+		json.Unmarshal(data, &aliases)
+	}
+	return BigClownTranslator{aliases}
 }
 
 func (t *BigClownTranslator) UpdateByMessage(bcMsg BcMessage) {
@@ -27,6 +35,7 @@ func (t *BigClownTranslator) UpdateByMessage(bcMsg BcMessage) {
 		default:
 			fmt.Println("Type:", reflect.TypeOf(v))
 		}
+		t.storeAlias()
 		fmt.Println("BigClownTranslator updated ", t.nodeIdToName)
 	}
 }
@@ -55,4 +64,12 @@ func (t *BigClownTranslator) FromSerialToMqtt(input BcMessage) BcMessage {
 	}
 }
 
-
+func (t *BigClownTranslator) storeAlias() {
+	if lastValuesToStore, err := json.MarshalIndent(t.nodeIdToName, "", "    "); err != nil {
+		panic(err)
+	} else {
+		if err := ioutil.WriteFile("./stored-aliases.json", lastValuesToStore, 0600); err != nil {
+			panic(err)
+		}
+	}
+}
