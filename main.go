@@ -15,7 +15,8 @@ func main() {
 		"node/+/+/+/+/set",
 		"node/+/+/+/+/get",
 		"/nodes/+",
-		"/pairing-mode/#",
+		"/pairing-mode/start",
+		"/pairing-mode/stop",
 		"/info/get",
 	}
 
