@@ -1,25 +1,35 @@
 package main
 
 import (
-	"github.com/tarm/serial"
-	"go/types"
-	"log"
 	"encoding/json"
+	"github.com/tarm/serial"
+	"log"
 	"os"
+	"sync"
 )
 
 type SerialReaderWriter struct {
-	port *serial.Port
+	port         *serial.Port
 	bcTranslator BigClownTranslator
+	callbacks    []func(message BcMessage)
+	callbackMux *sync.Mutex
 }
 
-func InitSerial() SerialReaderWriter {
+func InitSerial() *SerialReaderWriter {
 	c := &serial.Config{Name: os.Getenv("BC_DEVICE"), Baud: BC_GATEWAY_DEVICE_BAUD_RATE}
 	port, openSerialErr := serial.OpenPort(c)
 	if openSerialErr != nil {
 		log.Fatal(openSerialErr)
 	}
-	return SerialReaderWriter{port, InitBigClownTranslator()}
+	rslt := SerialReaderWriter{
+		port,
+		InitBigClownTranslator(),
+		make([]func(message BcMessage), 0),
+		&sync.Mutex{},
+	}
+	rslt.ConsumeMessagesFromSerial(rslt.bcTranslator.UpdateByMessage)
+	go rslt.readingLoop()
+	return &rslt
 }
 
 func (readerWriter *SerialReaderWriter) WriteSingleMessage(message BcMessage) {
@@ -32,19 +42,29 @@ func (readerWriter *SerialReaderWriter) WriteSingleMessage(message BcMessage) {
 }
 
 func (readerWriter *SerialReaderWriter) ConsumeMessagesFromSerial(callback func(message BcMessage)) {
-	doThis := func() types.Nil {
-		for ; ; {
-			line := readerWriter.readLine()
-			var bcMsg BcMessage
-			if parseBcMessageError := json.Unmarshal(line, &bcMsg); parseBcMessageError != nil {
-				log.Panic("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
-			} else {
-				readerWriter.bcTranslator.UpdateByMessage(bcMsg)
-				callback(readerWriter.bcTranslator.FromSerialToMqtt(bcMsg))
-			}
+	readerWriter.callbackMux.Lock()
+	defer readerWriter.callbackMux.Unlock()
+	readerWriter.callbacks = append(readerWriter.callbacks, callback)
+}
+
+func (readerWriter *SerialReaderWriter) readingLoop() {
+	for ; ; {
+		line := readerWriter.readLine()
+		var bcMsg BcMessage
+		if parseBcMessageError := json.Unmarshal(line, &bcMsg); parseBcMessageError != nil {
+			log.Panic("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
+		} else {
+			readerWriter.interateOverCallbacks(readerWriter.bcTranslator.FromSerialToMqtt(bcMsg))
 		}
 	}
-	go doThis()
+}
+
+func (readerWriter *SerialReaderWriter) interateOverCallbacks(bcMsg BcMessage) {
+	readerWriter.callbackMux.Lock()
+	defer readerWriter.callbackMux.Unlock()
+	for _, c := range readerWriter.callbacks {
+		c(bcMsg)
+	}
 }
 
 func (readerWriter *SerialReaderWriter) readLine() []byte {

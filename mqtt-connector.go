@@ -40,7 +40,8 @@ func (connector *MqttConnector) ConsumeMessagesFromMqtt(topics []string, onMessa
 	for _, pref := range topics {
 		filters[pref] = 0
 	}
-	if token := connector.client.SubscribeMultiple(filters, connector.createMqttCallback(onMessage)); token.Wait() && token.Error() != nil {
+	if token := connector.client.SubscribeMultiple(filters, connector.createMqttCallback(onMessage));
+	 token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
 }

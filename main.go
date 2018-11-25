@@ -30,7 +30,7 @@ func main() {
 		mqttConnector.Publish(bcMsg)
 	})
 
-	<-time.After(time.Duration(1000))
 	mqttConnector.RequestAliases()
 	<-time.After(time.Duration(math.MaxInt64))
+	mqttConnector.Publish(BcMessage{"gateway/status", "\"terminating\""})
 }
