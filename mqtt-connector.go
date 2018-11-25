@@ -10,7 +10,6 @@ import (
 
 type MqttConnector struct {
 	client   mqtt.Client
-	callback func(message BcMessage)
 }
 
 func InitMqtt() MqttConnector {
@@ -26,14 +25,24 @@ func InitMqtt() MqttConnector {
 		panic(token.Error())
 	}
 
-	result := MqttConnector{client, nil}
+	result := MqttConnector{client}
 
 	return result
 }
 
+func (connector *MqttConnector) ConsumeMessageFromMqtt(topics string, onMessage func(message BcMessage)) {
+	topicsArray := []string{topics}
+	connector.ConsumeMessagesFromMqtt(topicsArray, onMessage)
+}
+
 func (connector *MqttConnector) ConsumeMessagesFromMqtt(topics []string, onMessage func(message BcMessage)) {
-	connector.callback = onMessage
-	connector.addListener(topics)
+	filters := make(map[string]byte)
+	for _, pref := range topics {
+		filters[pref] = 0
+	}
+	if token := connector.client.SubscribeMultiple(filters, connector.createMqttCallback(onMessage)); token.Wait() && token.Error() != nil {
+		panic(token.Error())
+	}
 }
 
 func (connector *MqttConnector) Publish(bcMsg BcMessage) {
@@ -54,24 +63,16 @@ func (connector *MqttConnector) RequestAliases() {
 	}
 }
 
-func (connector *MqttConnector) addListener(_topics []string) {
-	topics := make(map[string]byte)
-	for _, pref := range _topics {
-	    topics[pref] = 0
-	}
-	if token := connector.client.SubscribeMultiple(topics, connector.mqttCallback); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-}
+func (connector *MqttConnector) createMqttCallback(callback func(message BcMessage)) func(client mqtt.Client, msg mqtt.Message) {
+	return func(client mqtt.Client, msg mqtt.Message) {
+		var tmp interface{}
+		if err := json.Unmarshal(msg.Payload(), &tmp); err != nil {
+			log.Print("Unable to read message from mqtt: " + err.Error())
+		}
 
-func (connector *MqttConnector) mqttCallback(client mqtt.Client, msg mqtt.Message) {
-	var tmp interface{}
-	if err := json.Unmarshal(msg.Payload(), &tmp); err != nil {
-		log.Print("Unable to read message from mqtt: " + err.Error())
+		bcMsg := BcMessage{msg.Topic(), tmp}
+		callback(bcMsg);
 	}
-
-	bcMsg := BcMessage{msg.Topic(), tmp}
-	connector.callback(bcMsg);
 }
 
 func (connector *MqttConnector) CreateBigClownTranslator() BigClownTranslator {

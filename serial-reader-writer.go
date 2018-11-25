@@ -37,7 +37,7 @@ func (readerWriter *SerialReaderWriter) ConsumeMessagesFromSerial(callback func(
 			line := readerWriter.readLine()
 			var bcMsg BcMessage
 			if parseBcMessageError := json.Unmarshal(line, &bcMsg); parseBcMessageError != nil {
-				log.Print("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
+				log.Panic("Unable to parse message " + string(line) + " :" + parseBcMessageError.Error())
 			} else {
 				readerWriter.bcTranslator.UpdateByMessage(bcMsg)
 				callback(readerWriter.bcTranslator.FromSerialToMqtt(bcMsg))
