@@ -10,9 +10,8 @@ Go implementation of Bigclown CoreModule->raspberry gateway
 ## How to build
 * git clone to your $GOPATH/src/github.com/vavravl1/bigclown_gateway
 * cd $GOPATH/src/github.com/vavravl1/bigclown_gateway
-* make build
 
 ## How to build
 * cd $GOPATH/src/github.com/vavravl1/bigclown_gateway
 * Update the deploy part of the makefile to address your raspberry settings
-* make deploy
+* make
